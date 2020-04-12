@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>code_redeemer</artifactId>
+        <groupId>com.cemalonder</groupId>
+        <version>1.0.0-SNAPSHOT</version>
+        <relativePath>..</relativePath>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>strapi</artifactId>
+    <packaging>pom</packaging>
+
+    <properties>
+        <serviceName>strapi</serviceName>
+        <docker.image.prefix>registry.hub.docker.com/cmlonder</docker.image.prefix>
+        <strapiRepo>${docker.image.prefix}/${serviceName}</strapiRepo>
+        <strapiImage>${strapiRepo}:${project.version}</strapiImage>
+    </properties>
+
+    <build>
+        <plugins>
+            <!--Builds Dockerfile-->
+            <plugin>
+                <groupId>com.spotify</groupId>
+                <artifactId>dockerfile-maven-plugin</artifactId>
+                <configuration>
+                    <repository>${strapiRepo}</repository>
+                    <tag>${project.version}</tag>
+                    <dockerfile>${project.build.directory}/docker/Dockerfile</dockerfile>
+                    <contextDirectory>${project.build.directory}/docker</contextDirectory>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>default</id>
+                        <goals>
+                            <goal>build</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Copy and filter resources -->
+            <plugin>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-resources</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}</outputDirectory>
+                            <encoding>UTF-8</encoding>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/src/main/filter</directory>
+                                    <filtering>true</filtering>
+                                </resource>
+                                <resource>
+                                    <directory>${project.basedir}/src/main/filter/compose</directory>
+                                    <filtering>true</filtering>
+                                    <targetPath>${project.parent.basedir}/</targetPath>
+                                </resource>
+                                <resource>
+                                    <directory>${project.basedir}/src/main/filter/models/</directory>
+                                    <filtering>true</filtering>
+                                    <!--TODO: See Dockerfile for folder permission problem-->
+                                    <targetPath>${project.build.directory}/docker</targetPath>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Configure your docker-compose-->
+            <plugin>
+                <groupId>com.dkanejs.maven.plugins</groupId>
+                <artifactId>docker-compose-maven-plugin</artifactId>
+                <configuration>
+                    <composeFile>${project.parent.basedir}/docker-compose.yml</composeFile>
+                </configuration>
+            </plugin>
+
+            <!-- Download and unpack keycloak distribution -->
+            <plugin>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>fix-rpm-files</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <!-- Extra step to convert line endings into lf -->
+                                <fixcrlf srcdir="${project.build.directory}" includes="docker/*.js, docker/*.sh"
+                                         eol="unix" eof="remove"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>3.1.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>com.spotify</groupId>
+                    <artifactId>dockerfile-maven-plugin</artifactId>
+                    <version>1.4.13</version>
+                </plugin>
+                <plugin>
+                    <groupId>com.spotify</groupId>
+                    <artifactId>dockerfile-maven-plugin</artifactId>
+                    <version>1.4.13</version>
+                </plugin>
+                <plugin>
+                    <groupId>com.dkanejs.maven.plugins</groupId>
+                    <artifactId>docker-compose-maven-plugin</artifactId>
+                    <version>2.5.1</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-antrun-plugin</artifactId>
+                    <version>1.8</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>
